@@ -57,6 +57,7 @@ async function startServer() {
       console.log("User disconnected:", socket.id);
       lobbyPlayers = lobbyPlayers.filter(p => p.socketId !== socket.id);
       io.emit("lobby-update", lobbyPlayers);
+      io.emit("player-disconnected", socket.id);
     });
   });
 
