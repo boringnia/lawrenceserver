@@ -104,6 +104,8 @@ function PlayerModel({
   const aiState = useRef({ phase: 'idle', timer: 0, targetX: 0, moveDir: 1 });
   const pickedDrops = useRef<Set<string>>(new Set());
 
+  const lastSyncTime = useRef(0);
+
   useEffect(() => {
     if (isCurrentTurn) {
       setMoveLeft(5);
@@ -128,8 +130,14 @@ function PlayerModel({
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'KeyA') keys.current.a = false;
-      if (e.code === 'KeyD') keys.current.d = false;
+      if (e.code === 'KeyA') {
+        keys.current.a = false;
+        if (isOnline) syncAction({ type: 'move', id: player.id, pos: useStore.getState().gameState.players.find(p => p.id === player.id)?.position || player.position });
+      }
+      if (e.code === 'KeyD') {
+        keys.current.d = false;
+        if (isOnline) syncAction({ type: 'move', id: player.id, pos: useStore.getState().gameState.players.find(p => p.id === player.id)?.position || player.position });
+      }
       if (e.code === 'KeyW') keys.current.w = false;
       if (e.code === 'KeyS') keys.current.s = false;
       if (e.code === 'Space') {
@@ -193,7 +201,25 @@ function PlayerModel({
     return () => window.removeEventListener('remote-shoot', handleRemoteShoot);
   }, [isOnline, isMe, player.id, onFire]);
 
+  const groupRef = useRef<THREE.Group>(null);
+
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.position.set(...player.position);
+    }
+  }, []); // Only on mount
+
   useFrame((state, delta) => {
+    if (groupRef.current) {
+      if (!isMe && isOnline) {
+        // Smoothly interpolate remote player positions
+        groupRef.current.position.lerp(new THREE.Vector3(...player.position), 0.3);
+      } else {
+        // Snap local player immediately
+        groupRef.current.position.set(...player.position);
+      }
+    }
+
     if (!player.isAlive) return;
 
     // Drop pickup logic
@@ -204,6 +230,9 @@ function PlayerModel({
         pickedDrops.current.add(drop.id);
         sounds.playPickup();
         pickupDrop(player.id, drop.id);
+        if (isOnline && isMe) {
+          syncAction({ type: 'pickup', playerId: player.id, dropId: drop.id });
+        }
       }
     });
 
@@ -225,7 +254,11 @@ function PlayerModel({
           }
           updatePlayerPosition(player.id, [newX, newY, 0]);
           if (isOnline) {
-            syncAction({ type: 'move', id: player.id, pos: [newX, newY, 0] });
+            const now = Date.now();
+            if (now - lastSyncTime.current > 50) {
+              syncAction({ type: 'move', id: player.id, pos: [newX, newY, 0] });
+              lastSyncTime.current = now;
+            }
           }
         }
 
@@ -329,7 +362,7 @@ function PlayerModel({
   if (!player.isAlive && !player.isGhost) return null;
 
   return (
-    <group position={player.position}>
+    <group ref={groupRef}>
       {(player.invincibleRounds > 0 || (player.condomExpiry && player.condomExpiry > Date.now())) && (
         <mesh position={[0, 0.5, 0]}>
           <sphereGeometry args={[1.2, 32, 32]} />
@@ -622,11 +655,18 @@ function Superman() {
       setPos(newPos);
 
       if (newPos.x > dropX && pos.x <= dropX) {
-        spawnDrop({
-          id: `drop-${Date.now()}`,
-          type: targetDrop,
-          position: [newPos.x, newPos.y, 0]
-        });
+        const isHost = !gameState.players[0] || gameState.players[0].id === useStore.getState().myId;
+        if (!useStore.getState().isOnline || isHost) {
+          const drop: Drop = {
+            id: `drop-${Date.now()}`,
+            type: targetDrop,
+            position: [newPos.x, newPos.y, 0]
+          };
+          spawnDrop(drop);
+          if (useStore.getState().isOnline) {
+            useStore.getState().syncAction({ type: 'spawn-drop', drop });
+          }
+        }
       }
 
       if (newPos.x > gameState.mapWidth/2 + 10) {
@@ -680,11 +720,18 @@ function Superwoman() {
       setPos(newPos);
 
       if (newPos.x < dropX && pos.x >= dropX) {
-        spawnDrop({
-          id: `medkit-${Date.now()}`,
-          type: 'medkit',
-          position: [newPos.x, newPos.y, 0]
-        });
+        const isHost = !gameState.players[0] || gameState.players[0].id === useStore.getState().myId;
+        if (!useStore.getState().isOnline || isHost) {
+          const drop: Drop = {
+            id: `medkit-${Date.now()}`,
+            type: 'medkit',
+            position: [newPos.x, newPos.y, 0]
+          };
+          spawnDrop(drop);
+          if (useStore.getState().isOnline) {
+            useStore.getState().syncAction({ type: 'spawn-drop', drop });
+          }
+        }
       }
 
       if (newPos.x < -gameState.mapWidth/2 - 10) {
@@ -1039,8 +1086,18 @@ function Scene() {
       applyExplosion(pos, activeProjectile.weapon);
       setActiveProjectile(null);
       
+      const turnIndexWhenFired = gameState.currentTurnIndex;
+      
       setTimeout(() => {
-        endTurn();
+        const state = useStore.getState();
+        // Only end turn if the turn hasn't already advanced (e.g., by the timer)
+        if (state.gameState.currentTurnIndex === turnIndexWhenFired) {
+          const currentPlayer = state.gameState.players[state.gameState.currentTurnIndex];
+          const isMe = currentPlayer?.id === state.myId;
+          if (!state.isOnline || isMe) {
+            endTurn();
+          }
+        }
       }, 2000);
     }
   };
