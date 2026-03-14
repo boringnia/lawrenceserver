@@ -75,7 +75,7 @@ interface StoreState {
   endTurn: (newWind?: [number, number, number]) => void;
   tickTimer: () => void;
   updatePlayerPosition: (id: string, pos: [number, number, number]) => void;
-  pickupDrop: (playerId: string, dropId: string) => void;
+  pickupDrop: (playerId: string, dropId: string, gangsters?: Gangster[]) => void;
   applyExplosion: (pos: [number, number, number], weapon: WeaponType) => void;
   applyAirstrike: (x: number, damage?: number) => void;
   applyCheatCondom: (playerId: string) => void;
@@ -164,7 +164,7 @@ export const useStore = create<StoreState>((set, get) => ({
     
     // Use the AI Studio backend if hosted on the free server, otherwise use relative path
     const backendUrl = window.location.hostname.includes('lawrence.ct.ws') 
-      ? "https://ais-pre-r5unce7yam67p4ktcisxsr-530302071793.asia-east1.run.app" 
+      ? "https://lawrenceserver.onrender.com" 
       : undefined;
       
     const socket = io(backendUrl);
@@ -184,15 +184,34 @@ export const useStore = create<StoreState>((set, get) => ({
       if (action.type === 'move') {
         state.updatePlayerPosition(action.id, action.pos);
       } else if (action.type === 'shoot') {
-        // We'll need a way to trigger a remote shot in the Game component
-        // For now, let's just sync the explosion/damage if the projectile logic is too complex to sync perfectly
-        // Actually, syncing the projectile start is better.
         window.dispatchEvent(new CustomEvent('remote-shoot', { detail: action }));
       } else if (action.type === 'explosion') {
         state.applyExplosion(action.pos, action.weapon);
       } else if (action.type === 'end-turn') {
         state.endTurn(action.wind);
+      } else if (action.type === 'pickup') {
+        state.pickupDrop(action.playerId, action.dropId);
+      } else if (action.type === 'spawn-drop') {
+        state.spawnDrop(action.drop);
       }
+    });
+
+    socket.on("player-disconnected", (id) => {
+      set(state => {
+        if (state.gameState.status !== 'playing') return state;
+        const players = state.gameState.players.map(p => 
+          p.id === id ? { ...p, hp: 0, isAlive: false, isGhost: true } : p
+        );
+        
+        const currentPlayer = state.gameState.players[state.gameState.currentTurnIndex];
+        if (currentPlayer?.id === id) {
+           // If the disconnected player was the current player, end their turn locally
+           // keeping the current wind to avoid desync
+           setTimeout(() => get().endTurn(state.gameState.wind), 0);
+        }
+        
+        return { gameState: { ...state.gameState, players } };
+      });
     });
 
     set({ socket });
@@ -360,6 +379,8 @@ export const useStore = create<StoreState>((set, get) => ({
   tickTimer: () => {
     set((state) => {
       if (state.gameState.status !== 'playing') return state;
+      if (state.gameState.timeLeft <= 0) return state; // Already waiting for sync
+
       const newTime = state.gameState.timeLeft - 1;
       if (newTime <= 0) {
         // Auto end turn
@@ -376,6 +397,18 @@ export const useStore = create<StoreState>((set, get) => ({
 
         if (players[nextIndex].invincibleRounds > 0) {
           players[nextIndex].invincibleRounds -= 1;
+        }
+
+        const currentPlayer = state.gameState.players[state.gameState.currentTurnIndex];
+        const myId = state.socket?.id;
+        
+        // If online, only the current player broadcasts the end-turn
+        if (state.isOnline && currentPlayer.id === myId) {
+           setTimeout(() => get().endTurn(), 0);
+           return { gameState: { ...state.gameState, timeLeft: 0 } };
+        } else if (state.isOnline) {
+           // Wait for the network event from the current player
+           return { gameState: { ...state.gameState, timeLeft: 0 } };
         }
 
         return {
@@ -401,7 +434,7 @@ export const useStore = create<StoreState>((set, get) => ({
     }));
   },
 
-  pickupDrop: (playerId, dropId) => {
+  pickupDrop: (playerId, dropId, gangsters) => {
     set((state) => {
       const drop = state.gameState.drops.find(d => d.id === dropId);
       if (!drop) return state;
@@ -436,22 +469,24 @@ export const useStore = create<StoreState>((set, get) => ({
       const newDrops = state.gameState.drops.filter(d => d.id !== dropId);
       
       if (drop.type === 'gangster') {
-        const newGangsters: Gangster[] = [];
-        const mapWidth = state.gameState.mapWidth;
-        for (let i = 0; i < 5; i++) {
-          const x = (Math.random() - 0.5) * mapWidth;
-          const randomAnimal = ANIMAL_TYPES[Math.floor(Math.random() * ANIMAL_TYPES.length)];
-          const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
-          newGangsters.push({
-            id: `gangster-${Date.now()}-${i}`,
-            position: [x, getTerrainHeight(x, state.gameState.terrain) + 1, 0],
-            hp: 2500,
-            isAlive: true,
-            animalType: randomAnimal,
-            color: randomColor,
-            spawnTime: Date.now(),
-            direction: Math.random() > 0.5 ? 1 : -1,
-          });
+        const newGangsters: Gangster[] = gangsters || [];
+        if (!gangsters) {
+          const mapWidth = state.gameState.mapWidth;
+          for (let i = 0; i < 5; i++) {
+            const x = (Math.random() - 0.5) * mapWidth;
+            const randomAnimal = ANIMAL_TYPES[Math.floor(Math.random() * ANIMAL_TYPES.length)];
+            const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+            newGangsters.push({
+              id: `gangster-${Date.now()}-${i}`,
+              position: [x, getTerrainHeight(x, state.gameState.terrain) + 1, 0],
+              hp: 2500,
+              isAlive: true,
+              animalType: randomAnimal,
+              color: randomColor,
+              spawnTime: Date.now(),
+              direction: Math.random() > 0.5 ? 1 : -1,
+            });
+          }
         }
         return {
           gameState: {
