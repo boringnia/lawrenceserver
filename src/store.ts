@@ -165,7 +165,7 @@ export const useStore = create<StoreState>((set, get) => ({
     
     // Use the AI Studio backend if hosted on the free server, otherwise use relative path
     const backendUrl = window.location.hostname.includes('lawrence.ct.ws') 
-      ? "https://lawrenceserver.onrender.com" 
+      ? "https://lawrenceserver-2.onrender.com" 
       : undefined;
       
     const socket = io(backendUrl);
@@ -517,7 +517,7 @@ export const useStore = create<StoreState>((set, get) => ({
         banana: 500,
         panties: 1000,
         bra: 4000,
-        knife: 100,
+        knife: 2000,
         airstrike: 3000,
       };
       const radiusMap: Record<WeaponType, number> = {
@@ -663,7 +663,7 @@ export const useStore = create<StoreState>((set, get) => ({
       gameState: {
         ...state.gameState,
         players: state.gameState.players.map(p => 
-          p.id === playerId ? { ...p, hp: p.hp + 2000 } : p
+          p.id === playerId ? { ...p, hp: p.hp + 5000 } : p
         )
       }
     }));
