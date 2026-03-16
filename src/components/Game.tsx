@@ -149,8 +149,8 @@ function PlayerModel({
             return;
           }
           const velocity = [
-            facing * Math.cos(aimAngle) * power * 0.5,
-            Math.sin(aimAngle) * power * 0.5,
+            facing * Math.cos(aimAngle) * power,
+            Math.sin(aimAngle) * power,
             0,
           ] as [number, number, number];
           
@@ -330,14 +330,14 @@ function PlayerModel({
             const angle = Math.PI / 4 + (Math.random() - 0.5) * 0.2;
             setAimAngle(angle);
             
-            const requiredPower = Math.min(30, Math.max(10, Math.sqrt(enemyDist * 15) + (Math.random() - 0.5) * 5));
+            const requiredPower = Math.min(30, Math.max(5, Math.sqrt(enemyDist * 10) + (Math.random() - 0.5) * 3));
             
             const availableWeapons = (['bra', 'panties', 'banana', 'orange', 'airstrike'] as WeaponType[]).filter(w => w === 'orange' || player.inventory[w] > 0);
             const aiWeapon = availableWeapons[0];
 
             const velocity = [
-              fireDir * Math.cos(angle) * requiredPower * 0.5,
-              Math.sin(angle) * requiredPower * 0.5,
+              fireDir * Math.cos(angle) * requiredPower,
+              Math.sin(angle) * requiredPower,
               0,
             ] as [number, number, number];
             
@@ -922,15 +922,13 @@ function BlueZone() {
     visualRadius.current = THREE.MathUtils.lerp(visualRadius.current, targetRadius, delta * 0.5);
     setZoneRadius(visualRadius.current);
 
-      if (gameState.currentTurnIndex !== lastDamageTurn.current) {
+    if (gameState.currentRound !== lastDamageTurn.current) {
       const damage = 50 + stage * 50;
       applyZoneDamage(damage, stage);
-      lastDamageTurn.current = gameState.currentTurnIndex;
+      lastDamageTurn.current = gameState.currentRound;
 
       if (stage >= 11) {
         setLightningPos([(Math.random() - 0.5) * visualRadius.current * 2, 0, 0]);
-      }
-    }
       }
     }
   });
@@ -1056,7 +1054,7 @@ function CheatCodeHandler({ setExplosions }: { setExplosions: React.Dispatch<Rea
       if (myId) applyCheatAllItems(myId);
       setKeySequence([]);
     }
-  }, [keySequence, applyAirstrike, applyCheatCondom, activateFastZone, spawnGangsters, applyCheatDoubleDamage, applyCheatAllItems, myId, setExplosions]);
+  }, [keySequence, applyAirstrike, applyCheatCondom, applyCheatHP, activateFastZone, spawnGangsters, applyCheatDoubleDamage, applyCheatAllItems, myId, setExplosions]);
 
   return null;
 }
