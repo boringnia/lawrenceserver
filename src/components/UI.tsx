@@ -591,31 +591,6 @@ export default function UI({ toggleFullscreen, isFullscreen }: { toggleFullscree
           {/* Weapons Inventory (Mobile Portrait only) */}
           {!isLandscape && renderInventory(false)}
         </div>
-
-        {/* Global Stats */}
-        {!isMobile && (
-          <div className="pointer-events-auto flex items-center gap-6 rounded-2xl bg-black/40 p-4 backdrop-blur-md border border-white/10">
-            <div className="flex items-center gap-3">
-              <Wind className="text-blue-400" size={20} />
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase">Wind</span>
-                <span className="text-lg font-black text-white">
-                  {gameState.wind[0] > 0 ? "→" : "←"} {Math.abs(gameState.wind[0] * 10).toFixed(1)}
-                </span>
-              </div>
-            </div>
-            <div className="h-8 w-[1px] bg-white/20" />
-            <div className="flex items-center gap-3">
-              <Crosshair className="text-red-400" size={20} />
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase">Zone</span>
-                <span className="text-lg font-black text-white">
-                  {gameState.zoneRadius.toFixed(0)}m
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Bottom Bar */}
