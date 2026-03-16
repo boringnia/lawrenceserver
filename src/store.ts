@@ -324,7 +324,7 @@ export const useStore = create<StoreState>((set, get) => ({
         currentTurnIndex: 0,
         currentRound: 1,
         terrain,
-        wind: [(Math.random() - 0.5) * 10, 0, 0],
+        wind: [(Math.random() - 0.5) * 3, 0, 0],
         drops: [],
         winner: null,
         timeLeft: 20,
@@ -363,7 +363,7 @@ export const useStore = create<StoreState>((set, get) => ({
         players[nextIndex].invincibleRounds -= 1;
       }
 
-      const wind = newWind || [(Math.random() - 0.5) * 10, 0, 0] as [number, number, number];
+      const wind = newWind || [(Math.random() - 0.5) * 3, 0, 0] as [number, number, number];
 
       // If it was my turn and I'm ending it, sync the wind
       const currentPlayer = state.gameState.players[state.gameState.currentTurnIndex];
@@ -425,7 +425,7 @@ export const useStore = create<StoreState>((set, get) => ({
             ...state.gameState,
             players,
             currentTurnIndex: nextIndex,
-            wind: [(Math.random() - 0.5) * 10, 0, 0],
+            wind: [(Math.random() - 0.5) * 3, 0, 0],
             timeLeft: 20,
           }
         };
