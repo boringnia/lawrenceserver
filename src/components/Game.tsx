@@ -902,7 +902,7 @@ function Lightning({ position }: { position: [number, number, number] }) {
 function BlueZone() {
   const { gameState, applyZoneDamage, setZoneRadius } = useStore();
   const [timePassed, setTimePassed] = useState(0);
-  const lastDamageTime = useRef(0);
+  const lastDamageTurn = useRef(-1);
   const [lightningPos, setLightningPos] = useState<[number, number, number] | null>(null);
   const visualRadius = useRef(gameState.zoneRadius);
 
@@ -922,13 +922,15 @@ function BlueZone() {
     visualRadius.current = THREE.MathUtils.lerp(visualRadius.current, targetRadius, delta * 0.5);
     setZoneRadius(visualRadius.current);
 
-    if (timePassed - lastDamageTime.current >= 5) {
+      if (gameState.currentTurnIndex !== lastDamageTurn.current) {
       const damage = 50 + stage * 50;
       applyZoneDamage(damage, stage);
-      lastDamageTime.current = timePassed;
+      lastDamageTurn.current = gameState.currentTurnIndex;
 
       if (stage >= 11) {
         setLightningPos([(Math.random() - 0.5) * visualRadius.current * 2, 0, 0]);
+      }
+    }
       }
     }
   });
@@ -1006,7 +1008,7 @@ function GameEvents() {
 }
 
 function CheatCodeHandler({ setExplosions }: { setExplosions: React.Dispatch<React.SetStateAction<any[]>> }) {
-  const { applyAirstrike, applyCheatCondom, activateFastZone, spawnGangsters, applyCheatDoubleDamage, applyCheatAllItems, myId, gameState } = useStore();
+  const { applyAirstrike, applyCheatCondom, applyCheatHP, activateFastZone, spawnGangsters, applyCheatDoubleDamage, applyCheatAllItems, myId, gameState } = useStore();
   const [keySequence, setKeySequence] = useState<string[]>([]);
   const lastKeyTime = useRef<number>(0);
 
@@ -1036,6 +1038,9 @@ function CheatCodeHandler({ setExplosions }: { setExplosions: React.Dispatch<Rea
       setKeySequence([]);
     } else if (sequence === 'WWWA') {
       if (myId) applyCheatCondom(myId);
+      setKeySequence([]);
+    } else if (sequence === 'WWWH') {
+      if (myId) applyCheatHP(myId);
       setKeySequence([]);
     } else if (sequence === 'WWWS') {
       activateFastZone();
