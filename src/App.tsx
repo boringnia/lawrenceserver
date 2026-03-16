@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import Game from "./components/Game";
 import UI from "./components/UI";
-import { Volume2, VolumeX, Maximize, Minimize } from "lucide-react";
+import { Volume2, VolumeX, Maximize, Minimize, Wind, Crosshair } from "lucide-react";
 import { useStore } from "./store";
 
 export default function App() {
@@ -11,6 +11,8 @@ export default function App() {
   const tickTimer = useStore(state => state.tickTimer);
   const gameStatus = useStore(state => state.gameState.status);
   const mapType = useStore(state => state.gameState.mapType);
+  const wind = useStore(state => state.gameState.wind);
+  const zoneRadius = useStore(state => state.gameState.zoneRadius);
 
   const bgmMap: Record<string, string> = {
     classic: "https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3",
@@ -130,21 +132,47 @@ export default function App() {
       <Game />
       <UI toggleFullscreen={toggleFullscreen} isFullscreen={isFullscreen} />
       
-      <div className="absolute top-4 right-4 z-50 flex gap-2">
-        <button 
-          onClick={toggleFullscreen}
-          className="p-3 bg-zinc-900/80 text-white rounded-full hover:bg-zinc-800 transition-colors backdrop-blur-sm"
-          title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-        >
-          {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
-        </button>
-        <button 
-          onClick={toggleMute}
-          className="p-3 bg-zinc-900/80 text-white rounded-full hover:bg-zinc-800 transition-colors backdrop-blur-sm"
-          title={isMuted ? "Unmute BGM" : "Mute BGM"}
-        >
-          {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
-        </button>
+      <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2 pointer-events-none">
+        <div className="flex gap-2 pointer-events-auto">
+          <button 
+            onClick={toggleFullscreen}
+            className="p-3 bg-zinc-900/80 text-white rounded-full hover:bg-zinc-800 transition-colors backdrop-blur-sm"
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+          >
+            {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+          </button>
+          <button 
+            onClick={toggleMute}
+            className="p-3 bg-zinc-900/80 text-white rounded-full hover:bg-zinc-800 transition-colors backdrop-blur-sm"
+            title={isMuted ? "Unmute BGM" : "Mute BGM"}
+          >
+            {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+          </button>
+        </div>
+        
+        {gameStatus === 'playing' && (
+          <div className="pointer-events-auto flex flex-col gap-3 rounded-2xl bg-black/40 p-3 backdrop-blur-md border border-white/10 mt-1">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase">Wind</span>
+                <span className="text-sm font-black text-white">
+                  {wind[0] > 0 ? "→" : "←"} {Math.abs(wind[0] * 10).toFixed(1)}
+                </span>
+              </div>
+              <Wind className="text-blue-400" size={18} />
+            </div>
+            <div className="h-[1px] w-full bg-white/20" />
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase">Zone</span>
+                <span className="text-sm font-black text-white">
+                  {zoneRadius.toFixed(0)}m
+                </span>
+              </div>
+              <Crosshair className="text-red-400" size={18} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
