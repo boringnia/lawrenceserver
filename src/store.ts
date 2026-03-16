@@ -51,6 +51,7 @@ export interface GameState {
   status: "waiting" | "playing" | "gameover";
   players: Player[];
   currentTurnIndex: number;
+  currentRound: number;
   terrain: { x: number; y: number; z: number; size: number }[];
   wind: [number, number, number];
   drops: Drop[];
@@ -321,6 +322,7 @@ export const useStore = create<StoreState>((set, get) => ({
         status: 'playing',
         players,
         currentTurnIndex: 0,
+        currentRound: 1,
         terrain,
         wind: [(Math.random() - 0.5) * 10, 0, 0],
         drops: [],
@@ -352,6 +354,11 @@ export const useStore = create<StoreState>((set, get) => ({
         nextIndex = (nextIndex + 1) % players.length;
       }
 
+      let newRound = state.gameState.currentRound;
+      if (nextIndex <= state.gameState.currentTurnIndex) {
+        newRound += 1;
+      }
+
       if (players[nextIndex].invincibleRounds > 0) {
         players[nextIndex].invincibleRounds -= 1;
       }
@@ -370,6 +377,7 @@ export const useStore = create<StoreState>((set, get) => ({
           ...state.gameState,
           players,
           currentTurnIndex: nextIndex,
+          currentRound: newRound,
           wind,
           timeLeft: 20,
         }
@@ -517,7 +525,7 @@ export const useStore = create<StoreState>((set, get) => ({
         banana: 500,
         panties: 1000,
         bra: 4000,
-        knife: 2000,
+        knife: 100,
         airstrike: 3000,
       };
       const radiusMap: Record<WeaponType, number> = {
@@ -658,12 +666,12 @@ export const useStore = create<StoreState>((set, get) => ({
     }));
   },
 
-    applyCheatHP: (playerId) => {
+  applyCheatHP: (playerId) => {
     set((state) => ({
       gameState: {
         ...state.gameState,
         players: state.gameState.players.map(p => 
-          p.id === playerId ? { ...p, hp: p.hp + 5000 } : p
+          p.id === playerId ? { ...p, hp: p.hp + 2000 } : p
         )
       }
     }));
@@ -771,9 +779,9 @@ export const useStore = create<StoreState>((set, get) => ({
       const players = state.gameState.players.map(p => {
         if (!p.isAlive) return p;
         if (Math.abs(p.position[0]) > state.gameState.zoneRadius) {
-          let finalDamage = damage;
+          let finalDamage = Math.floor(damage * 1.8);
           if (p.condomExpiry && p.condomExpiry > Date.now()) {
-            finalDamage = Math.floor(damage * 0.2); // Still hurts a bit
+            finalDamage = Math.floor(finalDamage * 0.2); // Still hurts a bit
           }
           const newHp = Math.max(0, p.hp - finalDamage);
           newDamageTexts.push({
