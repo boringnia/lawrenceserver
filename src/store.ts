@@ -79,6 +79,7 @@ interface StoreState {
   applyExplosion: (pos: [number, number, number], weapon: WeaponType) => void;
   applyAirstrike: (x: number, damage?: number) => void;
   applyCheatCondom: (playerId: string) => void;
+  applyCheatHP: (playerId: string) => void;
   applyCheatDoubleDamage: (playerId: string) => void;
   applyCheatAllItems: (playerId: string) => void;
   spawnDrop: (drop: Drop) => void;
@@ -652,6 +653,17 @@ export const useStore = create<StoreState>((set, get) => ({
         ...state.gameState,
         players: state.gameState.players.map(p => 
           p.id === playerId ? { ...p, condomExpiry: Date.now() + 100000 } : p
+        )
+      }
+    }));
+  },
+
+    applyCheatHP: (playerId) => {
+    set((state) => ({
+      gameState: {
+        ...state.gameState,
+        players: state.gameState.players.map(p => 
+          p.id === playerId ? { ...p, hp: p.hp + 2000 } : p
         )
       }
     }));
